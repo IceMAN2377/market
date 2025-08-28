@@ -2,6 +2,7 @@ package http
 
 import (
 	"github.com/IceMAN2377/market/internal/service"
+
 	"log/slog"
 	"net/http"
 )
@@ -18,4 +19,6 @@ func RegisterEndpoints(logger *slog.Logger, router *http.ServeMux, service servi
 
 	// Расчет стоимости
 	router.HandleFunc("POST /api/v1/subscriptions/cost-calculation", handler.CalculateCost)
+
+	RegisterSwaggerEndpoints(router)
 }

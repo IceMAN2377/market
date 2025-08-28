@@ -21,6 +21,7 @@ WORKDIR /app
 COPY --from=builder /app/market .
 # Copy migrations
 COPY --from=builder /app/db/migrations ./db/migrations
+COPY --from=builder /app/swagger.yaml ./swagger.yaml
 
 # Run the application
 CMD ["./market"]

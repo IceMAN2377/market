@@ -1,0 +1,546 @@
+openapi: 3.0.3
+info:
+  title: Market Subscription API
+  description: |
+    API для управления подписками пользователей на различные сервисы.
+    
+    ## Особенности
+    - CRUD операции для управления подписками
+    - Фильтрация подписок по пользователю и сервису
+    - Расчет общей стоимости подписок за период
+    - Поддержка пагинации
+    
+    ## Формат дат
+    Все даты в системе используют формат **MM-YYYY** (месяц-год).
+    Например: "01-2024" для января 2024 года.
+
+  version: 1.0.0
+  contact:
+    name: API Support
+    url: https://github.com/IceMAN2377/market
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.market.example.com
+    description: Production server
+
+paths:
+  /api/v1/subscriptions:
+    get:
+      summary: Получить список подписок
+      description: Возвращает список подписок с возможностью фильтрации и пагинации
+      tags:
+        - Subscriptions
+      parameters:
+        - name: user_id
+          in: query
+          description: UUID пользователя для фильтрации
+          required: false
+          schema:
+            type: string
+            format: uuid
+            example: "123e4567-e89b-12d3-a456-426614174000"
+        - name: service_name
+          in: query
+          description: Название сервиса для фильтрации (поддерживает частичное совпадение)
+          required: false
+          schema:
+            type: string
+            example: "Netflix"
+        - name: limit
+          in: query
+          description: Количество записей на странице
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+            example: 20
+        - name: offset
+          in: query
+          description: Смещение для пагинации
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+            example: 0
+      responses:
+        '200':
+          description: Успешно получен список подписок
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionListResponse'
+        '400':
+          description: Некорректные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Создать новую подписку
+      description: Создает новую подписку для пользователя
+      tags:
+        - Subscriptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubscriptionRequest'
+            examples:
+              netflix_subscription:
+                summary: Подписка на Netflix
+                value:
+                  service_name: "Netflix"
+                  price: 1499
+                  user_id: "123e4567-e89b-12d3-a456-426614174000"
+                  start_date: "01-2024"
+              spotify_with_end:
+                summary: Подписка на Spotify с датой окончания
+                value:
+                  service_name: "Spotify Premium"
+                  price: 699
+                  user_id: "987fcdeb-51d2-43a7-b890-123456789abc"
+                  start_date: "03-2024"
+                  end_date: "12-2024"
+      responses:
+        '201':
+          description: Подписка успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/subscriptions/{id}:
+    get:
+      summary: Получить подписку по ID
+      description: Возвращает информацию о конкретной подписке
+      tags:
+        - Subscriptions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID подписки
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Подписка найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          description: Некорректный ID подписки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Подписка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Обновить подписку
+      description: Обновляет информацию о существующей подписке
+      tags:
+        - Subscriptions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID подписки
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSubscriptionRequest'
+            examples:
+              update_price:
+                summary: Обновить только цену
+                value:
+                  price: 1699
+              update_end_date:
+                summary: Установить дату окончания
+                value:
+                  end_date: "12-2024"
+              update_all:
+                summary: Обновить все поля
+                value:
+                  service_name: "Netflix Premium"
+                  price: 1999
+                  end_date: "06-2025"
+      responses:
+        '200':
+          description: Подписка успешно обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Подписка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Удалить подписку
+      description: Удаляет подписку из системы
+      tags:
+        - Subscriptions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID подписки
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '204':
+          description: Подписка успешно удалена
+        '400':
+          description: Некорректный ID подписки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Подписка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/subscriptions/cost-calculation:
+    post:
+      summary: Рассчитать стоимость подписок
+      description: |
+        Рассчитывает общую стоимость подписок за указанный период.
+        Можно фильтровать по пользователю и/или названию сервиса.
+      tags:
+        - Cost Calculation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CostCalculationRequest'
+            examples:
+              user_total_cost:
+                summary: Общая стоимость для пользователя
+                value:
+                  user_id: "123e4567-e89b-12d3-a456-426614174000"
+                  start_date: "01-2024"
+                  end_date: "12-2024"
+              service_cost:
+                summary: Стоимость конкретного сервиса
+                value:
+                  service_name: "Netflix"
+                  start_date: "01-2024"
+                  end_date: "06-2024"
+              user_service_cost:
+                summary: Стоимость сервиса для пользователя
+                value:
+                  user_id: "123e4567-e89b-12d3-a456-426614174000"
+                  service_name: "Spotify"
+                  start_date: "01-2024"
+                  end_date: "12-2024"
+      responses:
+        '200':
+          description: Стоимость успешно рассчитана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostCalculationResponse'
+        '400':
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор подписки
+          example: 1
+        service_name:
+          type: string
+          description: Название сервиса
+          example: "Netflix"
+        price:
+          type: integer
+          description: Месячная стоимость подписки в копейках
+          example: 1499
+        user_id:
+          type: string
+          format: uuid
+          description: UUID пользователя
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        start_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-\d{4}$'
+          description: Дата начала подписки в формате MM-YYYY
+          example: "01-2024"
+        end_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-\d{4}$'
+          description: Дата окончания подписки в формате MM-YYYY (опционально)
+          example: "12-2024"
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          description: Время создания записи
+          example: "2024-01-01T12:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Время последнего обновления записи
+          example: "2024-01-01T12:00:00Z"
+      required:
+        - id
+        - service_name
+        - price
+        - user_id
+        - start_date
+        - created_at
+        - updated_at
+
+    CreateSubscriptionRequest:
+      type: object
+      properties:
+        service_name:
+          type: string
+          maxLength: 255
+          description: Название сервиса
+          example: "Netflix"
+        price:
+          type: integer
+          minimum: 1
+          description: Месячная стоимость подписки в копейках
+          example: 1499
+        user_id:
+          type: string
+          format: uuid
+          description: UUID пользователя
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        start_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-\d{4}$'
+          description: Дата начала подписки в формате MM-YYYY
+          example: "01-2024"
+        end_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-\d{4}$'
+          description: Дата окончания подписки в формате MM-YYYY (опционально)
+          example: "12-2024"
+          nullable: true
+      required:
+        - service_name
+        - price
+        - user_id
+        - start_date
+
+    UpdateSubscriptionRequest:
+      type: object
+      properties:
+        service_name:
+          type: string
+          maxLength: 255
+          description: Новое название сервиса
+          example: "Netflix Premium"
+        price:
+          type: integer
+          minimum: 1
+          description: Новая месячная стоимость подписки в копейках
+          example: 1699
+        end_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-\d{4}$'
+          description: Новая дата окончания подписки в формате MM-YYYY
+          example: "12-2024"
+          nullable: true
+      minProperties: 1
+      description: Должно быть указано хотя бы одно поле для обновления
+
+    SubscriptionListResponse:
+      type: object
+      properties:
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subscription'
+          description: Массив подписок
+        total:
+          type: integer
+          description: Общее количество записей в результате
+          example: 25
+        limit:
+          type: integer
+          description: Количество записей на странице
+          example: 10
+        offset:
+          type: integer
+          description: Смещение записей
+          example: 0
+      required:
+        - subscriptions
+        - total
+        - limit
+        - offset
+
+    CostCalculationRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: UUID пользователя (опционально для фильтрации)
+          example: "123e4567-e89b-12d3-a456-426614174000"
+          nullable: true
+        service_name:
+          type: string
+          description: Название сервиса (опционально для фильтрации)
+          example: "Netflix"
+          nullable: true
+        start_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-\d{4}$'
+          description: Начальная дата периода в формате MM-YYYY
+          example: "01-2024"
+        end_date:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])-\d{4}$'
+          description: Конечная дата периода в формате MM-YYYY
+          example: "12-2024"
+      required:
+        - start_date
+        - end_date
+
+    CostCalculationResponse:
+      type: object
+      properties:
+        total_cost:
+          type: integer
+          description: Общая стоимость подписок в копейках
+          example: 17988
+        start_date:
+          type: string
+          description: Начальная дата периода
+          example: "01-2024"
+        end_date:
+          type: string
+          description: Конечная дата периода
+          example: "12-2024"
+        user_id:
+          type: string
+          format: uuid
+          description: UUID пользователя (если был указан в запросе)
+          example: "123e4567-e89b-12d3-a456-426614174000"
+          nullable: true
+        service_name:
+          type: string
+          description: Название сервиса (если было указано в запросе)
+          example: "Netflix"
+          nullable: true
+      required:
+        - total_cost
+        - start_date
+        - end_date
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Статус успешности операции
+          example: false
+        error:
+          type: string
+          description: Описание ошибки
+          example: "subscription not found"
+        code:
+          type: integer
+          description: HTTP код ошибки
+          example: 404
+      required:
+        - success
+        - error
+        - code
+
+tags:
+  - name: Subscriptions
+    description: Операции управления подписками
+  - name: Cost Calculation
+    description: Расчет стоимости подписок
