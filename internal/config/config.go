@@ -2,8 +2,6 @@ package config
 
 import (
 	"github.com/caarlos0/env"
-	"github.com/joho/godotenv"
-	"log"
 )
 
 type Config struct {
@@ -25,9 +23,7 @@ type Config struct {
 
 // NewConfig creates a new Config
 func NewConfig() *Config {
-	if err := godotenv.Load(); err != nil {
-		log.Printf("warning: .env file not found: %v", err)
-	}
+
 	cfg := &Config{}
 	if err := cfg.readFromEnvironment(); err != nil {
 		panic(err)

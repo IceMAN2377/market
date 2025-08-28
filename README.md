@@ -1,6 +1,9 @@
-# Subscription Management Service
 
-A RESTful API service for managing user subscriptions to various services. This application allows creating, retrieving, updating, and deleting subscription records, as well as calculating the total cost of subscriptions over a specified period.
+
+# RUN THE PROJECT WITH FOLLOWING COMMAND
+```bash
+docker-compose up
+```
 
 ## Features
 
@@ -97,7 +100,7 @@ market/
 The easiest way to run the application is using Docker Compose:
 
 ```bash
-docker-compose up -d
+docker-compose up
 ```
 
 This will start both the PostgreSQL database and the application. The API will be available at http://localhost:8080.
